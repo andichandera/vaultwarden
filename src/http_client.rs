@@ -12,6 +12,7 @@ use reqwest::{
     dns::{Name, Resolve, Resolving},
     header,
 };
+use reqwest::header::HeaderValue;
 use url::Host;
 
 use crate::{CONFIG, util::is_global};
@@ -29,7 +30,20 @@ pub fn make_http_request(method: reqwest::Method, url: &str) -> Result<reqwest::
 
     should_block_host(&host)?;
 
-    Ok(INSTANCE.request(method, url))
+    let mut request = INSTANCE.request(method, url.clone());
+
+    if is_self_request(&url) {
+        let client_id = CONFIG.cf_access_client_id();
+        let client_secret = CONFIG.cf_access_client_secret();
+
+        if !client_id.is_empty() && !client_secret.is_empty() {
+            request = request
+                .header("CF-Access-Client-Id", HeaderValue::from_str(&client_id)?)
+                .header("CF-Access-Client-Secret", HeaderValue::from_str(&client_secret)?);
+        }
+    }
+
+    Ok(request)
 }
 
 pub fn get_reqwest_client_builder(enforce_block: bool) -> ClientBuilder {
@@ -89,6 +103,16 @@ fn should_block_address_regex(domain_or_ip: &str) -> bool {
     *guard = Some((block_regex, regex));
 
     is_match
+}
+
+fn is_self_request(url: &url::Url) -> bool {
+    let Ok(configured_domain) = url::Url::parse(&CONFIG.domain()) else {
+        return false;
+    };
+
+    url.scheme() == configured_domain.scheme()
+        && url.host_str() == configured_domain.host_str()
+        && url.port_or_known_default() == configured_domain.port_or_known_default()
 }
 
 pub fn get_valid_host(host: &str) -> Result<Host, CustomHttpClientError> {

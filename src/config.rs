@@ -580,6 +580,10 @@ make_config! {
         domain_origin:          String, false,  auto,   |c| extract_url_origin(&c.domain);
         /// Domain path |> Domain URL path (in https://example.com:8443/path, /path is the path)
         domain_path:            String, false,  auto,   |c| extract_url_path(&c.domain);
+        /// Cloudflare Access client ID |> Added to internal self-directed HTTP requests when configured
+        cf_access_client_id:    String, false,  def,    String::new();
+        /// Cloudflare Access client secret |> Added to internal self-directed HTTP requests when configured
+        cf_access_client_secret: Pass, false,   def,    String::new();
         /// Enable web vault
         web_vault_enabled:      bool,   false,  def,    true;
 
