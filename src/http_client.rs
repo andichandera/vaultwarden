@@ -37,9 +37,18 @@ pub fn make_http_request(method: reqwest::Method, url: &str) -> Result<reqwest::
         let client_secret = CONFIG.cf_access_client_secret();
 
         if !client_id.is_empty() && !client_secret.is_empty() {
+            let client_id_header = match HeaderValue::from_str(&client_id) {
+                Ok(value) => value,
+                Err(err) => err!(format!("Invalid CF_ACCESS_CLIENT_ID header value: {err}")),
+            };
+            let client_secret_header = match HeaderValue::from_str(&client_secret) {
+                Ok(value) => value,
+                Err(err) => err!(format!("Invalid CF_ACCESS_CLIENT_SECRET header value: {err}")),
+            };
+
             request = request
-                .header("CF-Access-Client-Id", HeaderValue::from_str(&client_id)?)
-                .header("CF-Access-Client-Secret", HeaderValue::from_str(&client_secret)?);
+                .header("CF-Access-Client-Id", client_id_header)
+                .header("CF-Access-Client-Secret", client_secret_header);
         }
     }
 
@@ -48,7 +57,7 @@ pub fn make_http_request(method: reqwest::Method, url: &str) -> Result<reqwest::
 
 pub fn get_reqwest_client_builder(enforce_block: bool) -> ClientBuilder {
     let mut headers = header::HeaderMap::new();
-    headers.insert(header::USER_AGENT, header::HeaderValue::from_static("Vaultwarden"));
+    headers.insert(header::USER_AGENT, HeaderValue::from_static("Vaultwarden"));
 
     let redirect_policy = reqwest::redirect::Policy::custom(|attempt| {
         if attempt.previous().len() >= 5 {
